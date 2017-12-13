@@ -179,6 +179,7 @@ wcurl() {
 
 get_length() {
     wcurl --head "$1" | sed -n 's/\r//;s/Content-Length: //p;'
+    # wcurl -sI $1 | grep Content-Length | awk '{print $2}'
 }
 
 calculate_range () {
@@ -223,12 +224,16 @@ main () {
     # get the data
     if [ "$follow" ]; then
         for (( i=0; i<url_count; i++ )); do
-            lastlen[$i]="$(( "$(get_length "${urls[$i]}")" - ${count:-${COUNT:-4096}} ))"
-            lastlen[$i]="$(( "${lastlen[$i]}" > 0 ? "${lastlen[$i]}" : 0 ))"
+            len=$( get_length "${urls[$i]}" )
+            len=${len:0:${#len}-1}
+            cnt=${count:-${COUNT:-4096}}
+            lastlen[$i]=$(( len - cnt ))
+            lastlen[$i]="$(( ${lastlen[$i]} > 0 ? ${lastlen[$i]} : 0 ))"
         done;
         while true; do
             for (( i=0; i<url_count; i++ )); do
                 len="$(get_length "${urls[$i]}")"
+                len=${len:0:${#len}-1}
                 [ "${lastlen[$i]}" != "$len" ] && $prep wcurl --range "${lastlen[$i]}-" "${urls[$i]}"
                 lastlen[$i]="$len"
             done
